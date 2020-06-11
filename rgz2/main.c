@@ -9,7 +9,7 @@ typedef struct groups {
 	struct groups* next;
 }groups;
 //отсюда
-groups* init(groups *head, char* id, int add) {//инициальизация элемента списка с сохранением упорядоченности
+groups* group_init(groups *head, char* id, int add) {//инициальизация элемента списка с сохранением упорядоченности
 	groups* t = head, *p;
 	p = (groups*)malloc(sizeof(groups));
 	p->id = id;
@@ -33,6 +33,17 @@ int find_symbol(char* s, char c) {//индекс первого вхождения символа
 	char *ach;
 	ach = strchr(s, c);
 	return (ach - s );
+}
+
+int strings_count(FILE *f) {//подсчет всего кол-ва строк
+	int count = 0;
+	fseek(f, 0, 0);
+	char str[256];
+	while (!feof(f)) {
+		fgets(str, 256, f);
+		count++;
+	}
+	return count;
 }
 
 void fgoton(FILE* f, int n) {//спуск в файле на n-ую строку
@@ -93,7 +104,7 @@ groups* form_groups_list(FILE *f) {//создание списка групп
 	for (int i = 0; i < till - 1; i++) {
 		name = get_group(f, i);
 		num = get_int(f, name);//инициализируем элемент за элементом
-		head = init(head, name, num);
+		head = group_init(head, name, num);
 	}
 	return head;
 }
@@ -195,10 +206,16 @@ int del_group(FILE *f, char* group, char* filename) {//удаление группы
 	return 0;
 }
 
-/*void print_group(FILE *f, char* group) {
-
+void print_groups(FILE *f) {//печать групп и студентов
+	groups *head = form_groups_list(f), *t = head->next;;
+	while (t->next != NULL) {
+		printf("Группа %s, кол-во студентов %d\n", t->id, t->next->add - t->add);
+		t = t->next;
+	}
+	printf("Группа %s, кол-во студентов %d\n", t->id, strings_count(f) - t->add+1);
 }
 
+/*
 void ins_student(FILE *f, char* group) {
 
 }
@@ -219,6 +236,5 @@ void main() {
 	char* filename = "list.txt";
 	FILE *f = fopen(filename, "ab+");
 	rewind(f);
-	ins_group(f, "АВТ-3", filename);
-	del_group(f, "АВТ-3", filename);
+	print_groups(f);
 }
