@@ -46,14 +46,14 @@ int get_int(FILE *f, char* group) {//вз€тие позиции начала студентов группы
 	int id;
 	fseek(f, 0, 0);
 	char str[256], num[256];
-	while (!feof(f)) {
-		fgets(str, 256, f);
-		if (strstr(str, group) != NULL)break;
+	while (!feof(f)) {//
+		fgets(str, 256, f);//опускаемс€, пока не найдем строку с именем group
+		if (strstr(str, group) != NULL)break;//
 	}
-	if (feof(f))return -1;
-	int a = find_symbol(str, ' ');
+	if (feof(f))return -1;//если все-таки ничего не нашли
+	int a = find_symbol(str, ' ');//первый пробел
 	for (int i = a+1; i < strlen(str)-1; i++)
-		num[i-a-1] = str[i];
+		num[i-a-1] = str[i];//посимвольно копируем
 	id = atoi(num);
 	return id;
 }
@@ -61,12 +61,12 @@ int get_int(FILE *f, char* group) {//вз€тие позиции начала студентов группы
 char *get_group(FILE *f, int id) {//вз€тие названи€ группы
 	char *str=malloc(sizeof(char)*256);
 	fseek(f, 0, 0);
-	fgoton(f, id);
-		fgets(str, 256, f);
+	fgoton(f, id);//опускаес€ до нужной группы
+	fgets(str, 256, f);//берем всю строку с ней
 	char *group=malloc(256*sizeof(char));
-	int index = find_symbol(str, ' ');
+	int index = find_symbol(str, ' ');//индекс первого пробела
 	for (int i = 0; i < index; i++) {
-		group[i] = str[i];
+		group[i] = str[i];//посимвольно копируем
 	}
 	group[index] = '\0';
 	return group;
@@ -82,17 +82,17 @@ char* strcopy( char* s2) {//копирование символьного массива посимвольно
 
 groups* form_groups_list(FILE *f) {//создание списка групп
 	char* name, *str = malloc(256 * sizeof(str));
-	groups *head = (groups*)malloc(sizeof(groups));
-	head->id = "";
-	head->add = 0;
-	head->next = NULL;
+	groups *head = (groups*)malloc(sizeof(groups));//
+	head->id = "";//
+	head->add = 0;//инициализаци€ головы
+	head->next = NULL;//
 	fseek(f, 0, 0);
 	fgets(str, 256, f);
-	int till = get_int(f, str), num, save;
+	int till = get_int(f, str), num, save;//первый стунде=последн€€ группа+1
 	fseek(f, 0, 0);
 	for (int i = 0; i < till - 1; i++) {
 		name = get_group(f, i);
-		num = get_int(f, name);
+		num = get_int(f, name);//инициализируем элемент за элементом
 		head = init(head, name, num);
 	}
 	return head;
@@ -100,9 +100,9 @@ groups* form_groups_list(FILE *f) {//создание списка групп
 
 void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group, int groupsize) {//перезаписывает файл с учетом новых списков, но оставл€ет всех студентов
 	char *newfile = "a.txt", *str=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256);
-	FILE *f1 = fopen(newfile, "w+");
+	FILE *f1 = fopen(newfile, "w+");//новый файл дл€ перезаписи
 	groups*	t = head->next;
-	while (t != NULL) {
+	while (t != NULL) {//записываем новый список студентов
 		name = strcopy(t->id);
 		strcat(name, " ");
 		strcat(name, itoa(t->add, str, 10));
@@ -110,34 +110,34 @@ void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group,
 		fputs(name, f1);
 		t = t->next;
 	}
-	if (deleted_group == NULL) {
-		rewind(f);
+	if (deleted_group == NULL) {//если удал€емой группы нет
+		rewind(f);//то просто копируем всех студентов без изменений
 		fgoton(f, head->next->add - 2);
 		while (!feof(f)) {
 			fgets(str, 256, f);
-			if (str[strlen(str) - 1] == '\n') {
+			if (str[strlen(str) - 1] == '\n') {//случай непоследнего стундента в списке
 				str[strlen(str) - 2] = '\n';
 				str[strlen(str) - 1] = '\0';
 			}
 			fputs(str, f1);
 		}
 	}
-	else {
+	else {//или
 		rewind(f);
 		fgoton(f, head->next->add);
-		for (int i = head->next->add; i < deleted_group->add-1; i++) {
+		for (int i = head->next->add; i < deleted_group->add-1; i++) {//записываем всех студентов до удал€емых
 			fgets(str, 256, f);
 			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
 			fputs(str, f1);
 		}
 		fgoton(f, deleted_group->next->add+groupsize );
-		while (!feof(f)) {
+		while (!feof(f)) {//и после удал€емых
 			fgets(str, 256, f);
 			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
 			fputs(str, f1);
 		}
 	}
-	fclose(f1);
+	fclose(f1);//закрываем оба файла, старый удал€ем, новый переименовываем в старый
 	fclose(f);
 	remove(filename);
 	rename(newfile, filename);
@@ -145,19 +145,19 @@ void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group,
 }
 //досюда
 
-int ins_group(FILE *f, char* group, char* filename) {
+int ins_group(FILE *f, char* group, char* filename) {//вставка пустой группы
 	char *str = malloc(256 * sizeof(char)), *name;
 	fseek(f, 0, 0);
-	groups *head = form_groups_list(f);
+	groups *head = form_groups_list(f);//формируем список групп
 	groups *t = (groups*)malloc(sizeof(groups));
 	t->id = group;
 	groups *p = head;
 	int flag = 0;
 	while (p->next != NULL) {
-		p->next->add++;
+		p->next->add++;//увеличиваем аддрес всех стундентов групп на 1
 		if (strcmp(p->next->id, t->id) == 0) 
 			return 0; 
-		if (strcmp(p->next->id, t->id) > 0 && flag==0){
+		if (strcmp(p->next->id, t->id) > 0 && flag==0){//начало студентов новой группы=начало студентов следующей за ней группы, тк в новой студентов 0
 			flag++;
 			t->add = p->next->add;
 			t->next = p->next;
@@ -166,32 +166,32 @@ int ins_group(FILE *f, char* group, char* filename) {
 		}
 		p = p->next;
 	}
-	rewritegroups(f, head, filename, NULL, 0);
+	rewritegroups(f, head, filename, NULL, 0);//перезапишем
 	return 1;
 }
 
-int del_group(FILE *f, char* group, char* filename) {
+int del_group(FILE *f, char* group, char* filename) {//удаление группы
 	groups *head = form_groups_list(f), *deleted_group, *t = head;
 	while (t->next != NULL) {
-		if (strcmp(t->next->id, group) == 0)break;
+		if (strcmp(t->next->id, group) == 0)break;//проверим, есть ли така€ группа
 		t = t->next;
 	}
-	if (t->next) {
-		deleted_group = t->next;
+	if (t->next) {//если есть
+		deleted_group = t->next;//запомним ее адресс
 		t = head;
-		int flag = 1;
+		int decrease = 1;//дл€ групп "до" уменьшение адресса студентов = 1 
 		while (t->next) {
-			t->next->add-=flag;
+			t->next->add-=decrease;
 			if (t->next == deleted_group) {
-				if(t->next->next!=NULL)flag +=(t->next->next->add-deleted_group->add-1);
-				t->next = deleted_group->next;
-				deleted_group->add++;
+				if(t->next->next!=NULL)decrease +=(t->next->next->add-deleted_group->add-1);//если это была не последн€€ группа, то уменьшение адреса = длине группы+1
+				t->next = deleted_group->next;//сотрем из основного списка
+				deleted_group->add++;//вернем старое значение, тк оно указывает на начало след. группы
 			}
 			else t = t->next;
 		}
-		rewritegroups(f, head, filename, deleted_group, flag-1);
+		rewritegroups(f, head, filename, deleted_group, decrease-1);
 		return 1;
-	}
+	}//если нет
 	return 0;
 }
 
