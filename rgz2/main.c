@@ -107,6 +107,8 @@ void ins_group(FILE *f, char* group, char* filename) {
 	groups *p = head;
 	int flag = 0;
 	while (p->next != NULL) {
+		if (strcmp(p->next->id, t->id) == 0) 
+			return; 
 		if (strcmp(p->next->id, t->id) > 0 && flag==0){
 			flag++;
 			t->add = p->next->add;
@@ -140,11 +142,11 @@ void ins_group(FILE *f, char* group, char* filename) {
 	f = fopen(filename, "ab+");
 }
 
-/*void del_group(FILE *f, char* group) {
+void del_group(FILE *f, char* group) {
 
 }
 
-void print_group(FILE *f, char* group) {
+/*void print_group(FILE *f, char* group) {
 
 }
 
@@ -169,5 +171,6 @@ void main() {
 	FILE *f = fopen(filename, "ab+");
 	rewind(f);
 	ins_group(f, "юбр-3", filename);
+	printf("%d", strcmp("a", "a"));
 	
 }
