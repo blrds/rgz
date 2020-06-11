@@ -86,19 +86,66 @@ groups* form_groups_list(FILE *f) {//создание списка групп
 	head->id = "";
 	head->add = 0;
 	head->next = NULL;
+	fseek(f, 0, 0);
 	fgets(str, 256, f);
 	int till = get_int(f, str), num, save;
 	fseek(f, 0, 0);
 	for (int i = 0; i < till - 1; i++) {
 		name = get_group(f, i);
 		num = get_int(f, name);
-		head = init(head, name, num + 1);
+		head = init(head, name, num);
 	}
 	return head;
 }
+
+void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group, int groupsize) {//перезаписывает файл с учетом новых списков, но оставляет всех студентов
+	char *newfile = "a.txt", *str=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256);
+	FILE *f1 = fopen(newfile, "w+");
+	groups*	t = head->next;
+	while (t != NULL) {
+		name = strcopy(t->id);
+		strcat(name, " ");
+		strcat(name, itoa(t->add, str, 10));
+		strcat(name, "\n");
+		fputs(name, f1);
+		t = t->next;
+	}
+	if (deleted_group == NULL) {
+		rewind(f);
+		fgoton(f, head->next->add - 2);
+		while (!feof(f)) {
+			fgets(str, 256, f);
+			if (str[strlen(str) - 1] == '\n') {
+				str[strlen(str) - 2] = '\n';
+				str[strlen(str) - 1] = '\0';
+			}
+			fputs(str, f1);
+		}
+	}
+	else {
+		rewind(f);
+		fgoton(f, head->next->add);
+		for (int i = head->next->add; i < deleted_group->add-1; i++) {
+			fgets(str, 256, f);
+			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
+			fputs(str, f1);
+		}
+		fgoton(f, deleted_group->next->add+groupsize );
+		while (!feof(f)) {
+			fgets(str, 256, f);
+			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
+			fputs(str, f1);
+		}
+	}
+	fclose(f1);
+	fclose(f);
+	remove(filename);
+	rename(newfile, filename);
+	f = fopen(filename, "ab+");
+}
 //досюда
 
-void ins_group(FILE *f, char* group, char* filename) {
+int ins_group(FILE *f, char* group, char* filename) {
 	char *str = malloc(256 * sizeof(char)), *name;
 	fseek(f, 0, 0);
 	groups *head = form_groups_list(f);
@@ -107,43 +154,45 @@ void ins_group(FILE *f, char* group, char* filename) {
 	groups *p = head;
 	int flag = 0;
 	while (p->next != NULL) {
+		p->next->add++;
 		if (strcmp(p->next->id, t->id) == 0) 
-			return; 
+			return 0; 
 		if (strcmp(p->next->id, t->id) > 0 && flag==0){
 			flag++;
 			t->add = p->next->add;
 			t->next = p->next;
 			p->next = t;
+			t->next->add--;
 		}
 		p = p->next;
 	}
-	char* newfile = "a.txt";
-	FILE *f1 = fopen(newfile,"w+");
-	t = head->next;
-	while (t != NULL) {
-		name = strcopy(t->id);
-		strcat(name, " ");
-		strcat(name,itoa(t->add, str, 10));
-		strcat(name, "\n");
-		fputs(name, f1);
-		t = t->next;
-	}
-	rewind(f);
-	fgoton(f, head->next->add-2);
-	while (!feof(f)) {
-		fgets(str, 256, f);
-		if(str[strlen(str) - 1]=='\n')str[strlen(str) - 1] = '\0';
-		fputs(str, f1);
-	}
-	fclose(f1);
-	fclose(f);
-	remove(filename);
-	rename(newfile, filename);
-	f = fopen(filename, "ab+");
+	rewritegroups(f, head, filename, NULL, 0);
+	return 1;
 }
 
-void del_group(FILE *f, char* group) {
-
+int del_group(FILE *f, char* group, char* filename) {
+	groups *head = form_groups_list(f), *deleted_group, *t = head;
+	while (t->next != NULL) {
+		if (strcmp(t->next->id, group) == 0)break;
+		t = t->next;
+	}
+	if (t->next) {
+		deleted_group = t->next;
+		t = head;
+		int flag = 1;
+		while (t->next) {
+			t->next->add-=flag;
+			if (t->next == deleted_group) {
+				if(t->next->next!=NULL)flag +=(t->next->next->add-deleted_group->add-1);
+				t->next = deleted_group->next;
+				deleted_group->add++;
+			}
+			else t = t->next;
+		}
+		rewritegroups(f, head, filename, deleted_group, flag-1);
+		return 1;
+	}
+	return 0;
 }
 
 /*void print_group(FILE *f, char* group) {
@@ -171,6 +220,5 @@ void main() {
 	FILE *f = fopen(filename, "ab+");
 	rewind(f);
 	ins_group(f, "АВТ-3", filename);
-	printf("%d", strcmp("a", "a"));
-	
+	del_group(f, "АВТ-3", filename);
 }
