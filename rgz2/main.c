@@ -8,7 +8,12 @@ typedef struct groups {
 	int add;
 	struct groups* next;
 }groups;
-//отсюда
+
+typedef struct students {
+	char* name, *surname, *patronymic;
+	struct students *next;
+}students;
+
 groups* group_init(groups *head, char* id, int add) {//инициальизация элемента списка с сохранением упорядоченности
 	groups* t = head, *p;
 	p = (groups*)malloc(sizeof(groups));
@@ -24,10 +29,25 @@ groups* group_init(groups *head, char* id, int add) {//инициальизация элемента с
 	return head;
 }
 
-typedef struct students {
-	char* name, surname, secondname;
-	struct students *next;
-}students;
+students* student_init(students* head, char* name, char* surname, char* patronymic) {
+	students* t = head, *p;
+	p = (students*)malloc(sizeof(students));
+	p->name = name;
+	p->surname = surname;
+	p->patronymic = patronymic;
+	p->next = NULL;
+	while (t->next != NULL) {
+		if (strcmp(t->next->surname, surname) > 0) break;//если фамилия нового раньше фамилии старого
+		if (strcmp(t->next->surname, surname) == 0)
+			if (strcmp(t->next->name, name) > 0)break;//если фамилии одинаковы, но имена различны
+			else if (strcmp(t->next->name, name) == 0)
+				if (strcmp(t->next->patronymic, patronymic) > 0)break;//если ФИ одинаковы, но отчества различны
+		t = t->next;
+	}
+	p->next = t->next;
+	t->next = p;
+	return head;
+}
 
 int find_symbol(char* s, char c) {//индекс первого вхождения символа
 	char *ach;
@@ -53,7 +73,7 @@ void fgoton(FILE* f, int n) {//спуск в файле на n-ую строку
 		fgets(str, 256, f);
 }
 
-int get_int(FILE *f, char* group) {//взятие позиции начала студентов группы
+int get_ind(FILE *f, char* group) {//взятие позиции начала студентов группы
 	int id;
 	fseek(f, 0, 0);
 	char str[256], num[256];
@@ -69,7 +89,23 @@ int get_int(FILE *f, char* group) {//взятие позиции начала студентов группы
 	return id;
 }
 
-char *get_group(FILE *f, int id) {//взятие названия группы
+char *get_next_group(FILE *f, char* group) {//следующая группа
+	char *str=malloc(sizeof(char)*256);
+	fseek(f, 0, 0);
+	fgets(str, 256, f);
+	int till = get_ind(f, str)-1;
+	fseek(f, 0, 0);
+	while (!feof(f)) {
+		fgets(str, 256, f);//опускаемся, пока не найдем строку с именем group
+		if (strstr(str, group) != NULL)break;//
+		till--;//счетчик первого студента
+		if (till <= 1)return NULL;
+	}
+	fgets(str, 256,f);//наша группа
+	return str;
+}
+
+char *get_group(FILE *f, int id) {//взятие названия группы на н-ой строке
 	char *str=malloc(sizeof(char)*256);
 	fseek(f, 0, 0);
 	fgoton(f, id);//опускаеся до нужной группы
@@ -99,54 +135,53 @@ groups* form_groups_list(FILE *f) {//создание списка групп
 	head->next = NULL;//
 	fseek(f, 0, 0);
 	fgets(str, 256, f);
-	int till = get_int(f, str), num, save;//первый стунде=последняя группа+1
+	int till = get_ind(f, str), num, save;//первый стунде=последняя группа+1
 	fseek(f, 0, 0);
 	for (int i = 0; i < till - 1; i++) {
 		name = get_group(f, i);
-		num = get_int(f, name);//инициализируем элемент за элементом
+		num = get_ind(f, name);//инициализируем элемент за элементом
 		head = group_init(head, name, num);
 	}
 	return head;
 }
 
-void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group, int groupsize) {//перезаписывает файл с учетом новых списков, но оставляет всех студентов
-	char *newfile = "a.txt", *str=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256);
-	FILE *f1 = fopen(newfile, "w+");//новый файл для перезаписи
+void write_group_list(FILE *f1, groups* head) {//запись нового списка групп
+	char *str = malloc(sizeof(char) * 256), *name = malloc(sizeof(char) * 256);
 	groups*	t = head->next;
-	while (t != NULL) {//записываем новый список студентов
+	while (t != NULL) {
 		name = strcopy(t->id);
 		strcat(name, " ");
-		strcat(name, itoa(t->add, str, 10));
+		strcat(name, itoa(t->add, str, 10));//формируем строку для записи
 		strcat(name, "\n");
 		fputs(name, f1);
 		t = t->next;
 	}
-	if (deleted_group == NULL) {//если удаляемой группы нет
-		rewind(f);//то просто копируем всех студентов без изменений
-		fgoton(f, head->next->add - 2);
-		while (!feof(f)) {
-			fgets(str, 256, f);
-			if (str[strlen(str) - 1] == '\n') {//случай непоследнего стундента в списке
-				str[strlen(str) - 2] = '\n';
-				str[strlen(str) - 1] = '\0';
-			}
-			fputs(str, f1);
+}
+
+void write_students_from_to(FILE *f, FILE *f1, int from, int to) {//запись неизменившихся студентов
+	char* str = malloc(sizeof(char) * 256);
+	rewind(f);
+	fgoton(f, from);
+	for (int i = from; i < to - 1; i++) {
+		fgets(str, 256, f);
+		if (str[strlen(str) - 1] == '\n') {//случай непоследнего стундента в списке
+			str[strlen(str) - 2] = '\n';
+			str[strlen(str) - 1] = '\0';
 		}
+		fputs(str, f1);
+	}
+}
+
+void regrouop(FILE *f, groups* head, char* filename, groups* deleted_group, int groupsize) {//перезаписывает файл с учетом новых списков, но оставляет всех студентов
+	char *newfile = "a.txt", *str=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256);
+	FILE *f1 = fopen(newfile, "w+");//новый файл для перезаписи
+	write_group_list(f1, head);
+	if (deleted_group == NULL) {//если удаляемой группы нет
+		write_students_from_to(f, f1, head->next->add - 2, strings_count(f) + 1);
 	}
 	else {//или
-		rewind(f);
-		fgoton(f, head->next->add);
-		for (int i = head->next->add; i < deleted_group->add-1; i++) {//записываем всех студентов до удаляемых
-			fgets(str, 256, f);
-			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
-			fputs(str, f1);
-		}
-		fgoton(f, deleted_group->next->add+groupsize );
-		while (!feof(f)) {//и после удаляемых
-			fgets(str, 256, f);
-			if (str[strlen(str) - 1] == '\n')str[strlen(str) - 1] = '\0';
-			fputs(str, f1);
-		}
+		write_students_from_to(f, f1, head->next->add, deleted_group->add);//записываем всех студентов до удаляемых
+		write_students_from_to(f, f1, deleted_group->next->add + groupsize, strings_count(f) + 1);
 	}
 	fclose(f1);//закрываем оба файла, старый удаляем, новый переименовываем в старый
 	fclose(f);
@@ -154,7 +189,6 @@ void rewritegroups(FILE *f, groups* head, char* filename, groups* deleted_group,
 	rename(newfile, filename);
 	f = fopen(filename, "ab+");
 }
-//досюда
 
 int ins_group(FILE *f, char* group, char* filename) {//вставка пустой группы
 	char *str = malloc(256 * sizeof(char)), *name;
@@ -177,7 +211,7 @@ int ins_group(FILE *f, char* group, char* filename) {//вставка пустой группы
 		}
 		p = p->next;
 	}
-	rewritegroups(f, head, filename, NULL, 0);//перезапишем
+	regrouop(f, head, filename, NULL, 0);//перезапишем
 	return 1;
 }
 
@@ -200,13 +234,13 @@ int del_group(FILE *f, char* group, char* filename) {//удаление группы
 			}
 			else t = t->next;
 		}
-		rewritegroups(f, head, filename, deleted_group, decrease-1);
+		regrouop(f, head, filename, deleted_group, decrease-1);
 		return 1;
 	}//если нет
 	return 0;
 }
 
-void print_groups(FILE *f) {//печать групп и студентов
+void print_groups(FILE *f) {//печать групп студентов
 	groups *head = form_groups_list(f), *t = head->next;;
 	while (t->next != NULL) {
 		printf("Группа %s, кол-во студентов %d\n", t->id, t->next->add - t->add);
@@ -215,26 +249,158 @@ void print_groups(FILE *f) {//печать групп и студентов
 	printf("Группа %s, кол-во студентов %d\n", t->id, strings_count(f) - t->add+1);
 }
 
-/*
-void ins_student(FILE *f, char* group) {
-
+students* form_students_list(FILE *f, int from, int to) {//формирование списка студентов
+	students* head, *t;
+	int flag, length;
+	char *str = malloc(sizeof(char) * 256), *name = malloc(sizeof(char) * 256), *surname = malloc(sizeof(char) * 256), *patronymic = malloc(sizeof(char) * 256);
+	head = malloc(sizeof(students));
+	head->name = "";
+	head->surname = "";//задание 
+	head->patronymic = "";
+	head->next = NULL;
+	fgoton(f, from - 1);
+	for (int i = from; i < to; i++) {
+		fgets(str, 256, f);
+		flag = 0;
+		for (int j = 0; j < strlen(str); j++) {
+			switch (flag) {
+			case 0: {
+				if (str[j] == ' ')surname[j] = '\0';
+				else surname[j] = str[j];
+				break;
+			}
+			case 1: {
+				if (str[j] == ' ')name[j - length] = '\0';
+				else name[j - length] = str[j];
+				break;
+			}
+			case 2: {
+				if (str[j] == '\r') {
+					patronymic[j - length] = '\0';
+					break;
+				}
+				else patronymic[j - length] = str[j];
+				if (str[j + 1] == '\0')patronymic[j - length + 1] = '\0';
+				break;
+			}
+			}
+			if (str[j] == ' ') {
+				length = j + 1;
+				flag++;
+			}
+		}
+		head = student_init(head, strcopy(name), strcopy(surname), strcopy(patronymic));
+	}
+	return head;
 }
 
-void del_student(FILE *f, char* group) {
-
+void restud(FILE *f, students* heads, groups* headg, char* filename, char* group) {//перезапись с новыми студентами
+	char *newfile = "a.txt", *str = malloc(sizeof(char) * 256);
+	FILE *f1 = fopen(newfile, "w+");//новый файл для перезаписи
+	write_group_list(f1, headg);//пишим новый список групп
+	groups* t = headg->next;
+	while (t) {//ловим нашу группу
+		if (strcmp(t->id, group) == 0)break;
+		t = t->next;
+	}
+	write_students_from_to(f, f1, headg->next->add-1, t->add);//пишем всех студентов до изменишвиейся группы
+	students *p = heads->next;
+	while (p) {
+		strcpy(str, p->surname);
+		strcat(str, " ");
+		strcat(str, p->name);//переписываем 
+		strcat(str, " ");
+		strcat(str, p->patronymic);
+		if(p->next || t->next)strcat(str, "\n");
+		fputs(str, f1);
+		p = p->next;
+	}
+	if (t->next)
+		write_students_from_to(f, f1, t->next->add, strings_count(f)+1);//после изменившейся группы
+	fclose(f1);//закрываем оба файла, старый удаляем, новый переименовываем в старый
+	fclose(f);
+	remove(filename);
+	rename(newfile, filename);
+	f = fopen(filename, "ab+");
 }
 
-void print_student(){
-
+int ins_student(FILE *f, char* group, char* surname, char* name, char* patronymic, char* filename) {
+	groups* headg = form_groups_list(f), *t = headg->next;//формируем список групп
+	while (t) {
+		if (strcmp(t->id, group) == 0)break;//ишем нашу
+		t = t->next;
+	}
+	if (!t)return 0;//если заданной группы нет
+	t = t->next;
+	while (t) {
+		t->add++;
+		t = t->next;
+	}
+	int from=get_ind(f, group), to;//начало студентов
+	char *next = get_next_group(f, group);//след группа для получения конца студентов
+	if (next)to = get_ind(f, next);//если группа не последняя
+	else to = strings_count(f);//если группа последняя
+	students *heads = from==to?form_students_list(f, from, to-1): form_students_list(f, from, to+1);//новый список студентов
+	heads = student_init(heads, name, surname, patronymic);//добаволяем нового
+	restud(f, heads, headg, filename, group);//переписываем
+	return 1;
 }
-*/
+
+int del_student(FILE *f, char* group, char* surname, char* name, char* patronymic, char* filename) {
+	groups* headg = form_groups_list(f), *t = headg->next;//формируем список групп
+	while (t) {
+		if (strcmp(t->id, group) == 0)break;
+		t = t->next;
+	}
+	if (!t)return 0;//если заданной группы нет
+	int from = get_ind(f, group), to;//начало студентов
+	char *next = get_next_group(f, group);//след группа для конца студентов
+	if (next)to = get_ind(f, next);//если не последняя группа
+	else to = strings_count(f);//если последняя
+	students *heads = (from == to ? form_students_list(f, from, to) : (t->next? form_students_list(f, from, to ): form_students_list(f, from, to+1))), *p=heads;
+	int flag = 0;
+	while (p->next) {
+		if (strcmp(p->next->name, name) == 0 && strcmp(p->next->surname, surname) == 0 && strcmp(p->next->patronymic, patronymic) == 0) {//ищем удаляемого
+			p->next = p->next->next;//удаляем
+			flag++;
+			break;
+		}
+		p = p->next;
+	}
+	if (flag == 0)return 0;//если такого нет
+	t = t->next;
+	while (t) {//уменьшаем адрес последующих групп на 1
+		t->add--;
+		t = t->next;
+	}
+	restud(f, heads, headg, filename, group);//переписываем
+	return 1;
+}
+
+void print_student(FILE *f, char* group){//печать студентов группы
+	int from = get_ind(f, group), to;
+	char *next = get_next_group(f, group);
+	if (next)to = get_ind(f, next);
+	else to = strings_count(f);
+	if (from == -1)return 0;
+	students* head = form_students_list(f, from, to), *p=head->next;
+	while (p) {
+		printf("%s %s %s\n", p->surname, p->name, p->patronymic);
+		p = p->next;
+	}
+}
+
 
 void main() {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
 	setlocale(LC_ALL, "rus");
-	char* filename = "list.txt";
+	char* filename = "list.txt", *str = malloc(sizeof(char) * 256), *name = malloc(sizeof(char) * 256), *surname = malloc(sizeof(char) * 256), *patronymic = malloc(sizeof(char) * 256);
 	FILE *f = fopen(filename, "ab+");
 	rewind(f);
-	print_groups(f);
+	print_student(f, "АВТ-1");
+	printf("\n");
+	print_student(f, "АВТ-3");
+	printf("\n");
+	print_student(f, "АВТ-4");
 }
