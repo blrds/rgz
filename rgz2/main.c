@@ -211,6 +211,11 @@ int ins_group(FILE *f, char* group, char* filename) {//вставка пустой группы
 		}
 		p = p->next;
 	}
+	if (flag == 0) {
+		p->next = t;
+		t->next = NULL;
+		t->add = strings_count(f)+1;
+	}
 	regrouop(f, head, filename, NULL, 0);//перезапишем
 	return 1;
 }
@@ -240,13 +245,15 @@ int del_group(FILE *f, char* group, char* filename) {//удаление группы
 	return 0;
 }
 
-void print_groups(FILE *f) {//печать групп студентов
+int print_groups(FILE *f) {//печать групп студентов
 	groups *head = form_groups_list(f), *t = head->next;;
+	if (!t)return 0;
 	while (t->next != NULL) {
 		printf("Группа %s, кол-во студентов %d\n", t->id, t->next->add - t->add);
 		t = t->next;
 	}
 	printf("Группа %s, кол-во студентов %d\n", t->id, strings_count(f) - t->add+1);
+	return 1;
 }
 
 students* form_students_list(FILE *f, int from, int to) {//формирование списка студентов
@@ -377,7 +384,7 @@ int del_student(FILE *f, char* group, char* surname, char* name, char* patronymi
 	return 1;
 }
 
-void print_student(FILE *f, char* group){//печать студентов группы
+int print_student(FILE *f, char* group){//печать студентов группы
 	int from = get_ind(f, group), to;
 	char *next = get_next_group(f, group);
 	if (next)to = get_ind(f, next);
@@ -388,19 +395,92 @@ void print_student(FILE *f, char* group){//печать студентов группы
 		printf("%s %s %s\n", p->surname, p->name, p->patronymic);
 		p = p->next;
 	}
+	return 1;
 }
 
+void controle_method() {
+	printf("Введите путь к файлу\n");
+	char* filename=malloc(sizeof(char)*256), c=' ',*group= malloc(sizeof(char) * 256), *s=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256),*surname = malloc(sizeof(char) * 256),*patronymic = malloc(sizeof(char) * 256);
+	gets(filename);
+	FILE *f = fopen(filename, "ab+");
+	rewind(f);
+	while (c!='0') {
+		printf("Выберите действие:\n1)Добавит группу\n2)Удалить группу\n3)Напечатать список групп\n4)Добавит студента\n5)Удалить студента\n6)Печать списка студентов группы\n7)Выход\n");
+		scanf("%c", &c);
+		switch (c) {
+		case '1': {
+			printf("Введите название группы\n");
+			scanf("%s", group);
+			if (ins_group(f, group, filename))printf("Группа добавлена\n");
+			else printf("Группа не добавлена\n");
+			gets(group);
+			break;
+		}
+		case '2': {
+			printf("Введите название группы\n");
+			scanf("%s", group);
+			if (del_group(f, group, filename))printf("Группа удалена\n");
+			else printf("Группа уже отсутвует\n");
+			gets(group);
+			break;
+		}
+		case '3': {
+			if (print_groups(f))printf("Группы напечатаны\n");
+			else printf("Группы не напечатаны\n");
+			gets(group);
+			break;
+		}
+		case '4': {
+			printf("Введите название группы\n");
+			scanf("%s", group);
+			gets(s);
+			printf("Введите Фамилию\n");
+			scanf("%s", surname);
+			gets(s);
+			printf("Введите Имя\n");
+			scanf("%s", name);
+			gets(s);
+			printf("Введите Отчество\n");
+			scanf("%s", patronymic);
+			gets(s);
+			if (ins_student(f, group, surname, name, patronymic, filename))printf("Студент добавлен\n");
+			else printf("Студент не добавлен\n");
+			break;
+		}
+		case '5': {
+			printf("Введите название группы\n");
+			scanf("%s", group);
+			gets(s);
+			printf("Введите Фамилию\n");
+			scanf("%s", surname);
+			gets(s);
+			printf("Введите Имя\n");
+			scanf("%s", name);
+			gets(s);
+			printf("Введите Отчество\n");
+			scanf("%s", patronymic);
+			gets(s);
+			if (del_student(f, group, surname, name, patronymic, filename))printf("Студент удален\n");
+			else printf("Студент не удален\n");
+			break;
+		}
+		case '6': {
+			printf("Введите название группы\n");
+			scanf("%s", group);
+			if (print_student(f,group))printf("Студенты напечатаны\n");
+			else printf("Студенты не напечатаны\n");
+			gets(group);
+			break;
+		}
+		case '7': 
+			return;
+		}
+	}
+}
 
 void main() {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
 	setlocale(LC_ALL, "rus");
-	char* filename = "list.txt", *str = malloc(sizeof(char) * 256), *name = malloc(sizeof(char) * 256), *surname = malloc(sizeof(char) * 256), *patronymic = malloc(sizeof(char) * 256);
-	FILE *f = fopen(filename, "ab+");
-	rewind(f);
-	print_student(f, "АВТ-1");
-	printf("\n");
-	print_student(f, "АВТ-3");
-	printf("\n");
-	print_student(f, "АВТ-4");
+	controle_method();	
 }
