@@ -401,8 +401,14 @@ int print_student(FILE *f, char* group){//печать студентов группы
 void controle_method() {
 	printf("Введите путь к файлу\n");
 	char* filename=malloc(sizeof(char)*256), c=' ',*group= malloc(sizeof(char) * 256), *s=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256),*surname = malloc(sizeof(char) * 256),*patronymic = malloc(sizeof(char) * 256);
-	gets(filename);
-	FILE *f = fopen(filename, "ab+");
+	FILE *f;
+	while (!f) {
+		gets(filename);
+		f = fopen(filename, "r");
+		if (f)break;
+		printf("Файл не существует");
+	} 
+	freopen(filename, "ab+", f);
 	rewind(f);
 	while (c!='0') {
 		printf("Выберите действие:\n1)Добавит группу\n2)Удалить группу\n3)Напечатать список групп\n4)Добавит студента\n5)Удалить студента\n6)Печать списка студентов группы\n7)Выход\n");
@@ -472,8 +478,10 @@ void controle_method() {
 			gets(group);
 			break;
 		}
-		case '7': 
+		case '7': {
+			fclose(f);
 			return;
+		}
 		}
 	}
 }
