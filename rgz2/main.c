@@ -490,7 +490,5 @@ void main() {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
 	setlocale(LC_ALL, "rus");
-	//controle_method();
-	FILE *f = fopen("list.txt", "ab+");
-	ins_student(f, "юбр-3", "а", "ю", "б", "list.txt");
+	controle_method();
 }
