@@ -323,7 +323,7 @@ void restud(FILE *f, students* heads, groups* headg, char* filename, char* group
 		p = p->next;
 	}
 	if (t->next)
-		write_students_from_to(f, f1, t->next->add, strings_count(f)+1);//после изменившейся группы
+		write_students_from_to(f, f1, t->next->add-2, strings_count(f)+1);//после изменившейся группы
 	fclose(f1);//закрываем оба файла, старый удаляем, новый переименовываем в старый
 	fclose(f);
 	remove(filename);
@@ -401,7 +401,7 @@ int print_student(FILE *f, char* group){//печать студентов группы
 void controle_method() {
 	printf("Введите путь к файлу\n");
 	char* filename=malloc(sizeof(char)*256), c=' ',*group= malloc(sizeof(char) * 256), *s=malloc(sizeof(char)*256), *name = malloc(sizeof(char) * 256),*surname = malloc(sizeof(char) * 256),*patronymic = malloc(sizeof(char) * 256);
-	FILE *f;
+	FILE *f=NULL;
 	while (!f) {
 		gets(filename);
 		f = fopen(filename, "r");
@@ -490,5 +490,7 @@ void main() {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
 	setlocale(LC_ALL, "rus");
-	controle_method();	
+	//controle_method();
+	FILE *f = fopen("list.txt", "ab+");
+	ins_student(f, "АВТ-3", "Б", "А", "В", "list.txt");
 }
